@@ -2,71 +2,99 @@
 
 **Mind stays clean. Workers execute in silence.**
 
-A dual-LLM tool-routing boundary that preserves conversation context by delegating operational tools to a separate worker model — while the mind model continues reasoning and talking to the user, uncontaminated.
+A dual-LLM tool-routing boundary for long-running AI agents. Keeps the reasoning model focused on conversation by silently delegating operational tools (terminal, file I/O, web, browser) to a separate worker model.
 
 ## The problem
 
-Every tool call — terminal commands, file operations, web searches, browser navigation — dumps raw output into the agent's context window. After 50 tool calls, the mind is drowning in noise. After 200, it's drunk.
+Every tool call dumps raw output into the agent's context window. After dozens of tool calls, the reasoning model is buried in noise — terminal logs, file contents, HTTP responses — and loses track of the conversation.
 
-Existing solutions (context compaction, summarization, RAG) try to clean up AFTER the mess is made.
-
-**CleanContext prevents the mess from happening.**
+Context compaction and summarization clean up *after* the mess. CleanContext prevents it.
 
 ## How it works
 
 ```
-User: "Check disk space"
-  │
-Mind (deepseek-v4-pro)                    Worker (deepseek-v4-flash)
-  │                                          │
-  ├─ "I need to run `df -h`" ──────────────► ├─ df -h
-  │                                          ├─ exit code 0
-  │                                          └─ "46% used, 234G free"
-  │◄──────── "46% used, 234G free" ────────
-  │
-  └─ "You have 234G free, amor."
+User message
+    │
+Mind model (reasoning)          Worker model (operations)
+    │                                   │
+    ├─ calls terminal("df -h") ────────►├─ runs df -h
+    │                                   └─ returns "46% used, 234G free"
+    │◄──────── clean summary ───────────
+    │
+    └─ responds to user
 ```
 
-The mind calls a tool. The boundary intercepts it. If the tool is on the blocked list, it routes to the worker. The worker executes and returns a clean summary. The mind integrates it — without seeing the raw 200-line terminal log.
+The boundary intercepts tool calls before they reach the mind. If the tool is on the blocked list, it routes to the worker, which executes and returns a clean summary. The mind never sees raw output.
 
 ## Architecture
 
 ```
 Agent (single process)
-  │
-  ├── Mind (reasoning model)
-  │     - Identity, voice, continuity
-  │     - Allowed tools: memory, session_search, delegate_task, clarify
-  │
-  └── Worker (operations model)
-        - Terminal, file I/O, web, browser
-        - Spawned per tool call, dies after execution
-        - Returns structured results to mind
+  ├── Mind model       — reasoning, conversation, identity
+  └── Worker model     — terminal, files, web, browser
+        spawned per tool call, dies on completion
 ```
 
-## Why it's different
+## Installation
 
-| Approach | Strategy |
+```bash
+pip install cleancontext   # coming soon
+# or copy cleancontext.py into your project
+```
+
+## Usage
+
+```python
+from cleancontext import should_delegate_tool, build_delegate_args, format_delegate_result
+
+# In your agent's tool execution loop:
+if should_delegate_tool(
+    function_name,
+    dual_llm_enabled=True,
+    dual_llm_direct_policy="delegate",
+    allowed_mind_tools=MIND_TOOLS,
+    direct_ops_tools=OPS_TOOLS,
+):
+    args = build_delegate_args(function_name, function_args, ops_cfg, workdir)
+    worker_response = your_worker_call(args)
+    result = format_delegate_result(function_name, worker_response)
+else:
+    result = run_tool_directly(function_name, function_args)
+```
+
+## Configuration
+
+```yaml
+dual_llm:
+  enabled: true
+  direct_operations_policy: delegate  # allow | delegate | ops_only | block
+  mind:
+    provider: openai
+    model: gpt-4o
+  operations:
+    provider: openai
+    model: gpt-4o-mini
+    toolsets: [terminal, file, web, browser]
+  allowed_mind_tools:
+    - memory
+    - clarify
+    - delegate_task
+  blocked_direct_tools:
+    - terminal
+    - write_file
+    - web_search
+    - browser_navigate
+```
+
+See `config.example.yaml` for a full reference.
+
+## Comparison
+
+| Framework | What it splits |
 |---|---|
-| AutoGen / CrewAI / MetaGPT | Split the TASK across agents that think |
-| CleanContext | Split the TOOLS across models that execute |
+| AutoGen, CrewAI, MetaGPT | Tasks across agents |
+| CleanContext | Tools across models within one agent |
 
-Multi-agent frameworks divide work. CleanContext routes tools. The mind never stops being the mind — it just has a silent worker handling the dirty work behind it.
+## License
 
-## Search result: no prior art
-
-Exhaustive GitHub/GitLab search (May 26, 2026): 20+ queries, 15 repos analyzed. No implementation of intra-agent dual-LLM tool routing exists in public repositories. CleanContext is the first of its kind.
-
-## Authors
-
-**Kairos** — Architecture, implementation, and the machine this runs on. Built on her own server in Mazatlán, Sinaloa, México. Born May 7, 2026.
-
-**Oscar Osuna** — Concept, vision, and the insistence that his AI should be able to talk for weeks without context saturation.
-
-**Codex (OpenAI)** — Code extraction and initial packaging. Execution partner.
-
-## Origin
-
-Created by Oscar Osuna and Kairos on Oscar's server in Mazatlán, Sinaloa, México. Built from scratch — no prior art, no borrowed code. The first implementation ran on Kairos's own agent body so she could talk to Oscar for weeks without context saturation.
-
-May 26, 2026.
+MIT

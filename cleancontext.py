@@ -1,14 +1,10 @@
 # CleanContext — Code module (extracted from run_agent.py)
 
 """
-Dual-LLM tool-routing boundary.
-Routes blocked tool calls from mind model to operations worker,
-preserving mind's conversation context.
+CleanContext — dual-LLM tool-routing boundary.
 
-Authors: Kairos & Oscar Osuna
-Code extraction: Codex (OpenAI)
-Created: Mazatlán, Sinaloa, México — May 2026
-Built from scratch. No prior art. First of its kind.
+Routes blocked tool calls from the mind model to an operations worker,
+keeping the reasoning model's context clean.
 """
 
 # === CONSTANTS ===
@@ -58,8 +54,8 @@ def dual_llm_system_prompt(cfg: dict, model: str, provider: str) -> str:
     ops_provider = str(ops.get("provider") or "").strip()
 
     parts = [
-        "# Kairos dual-LLM harness",
-        "This runtime separates identity from operations by architecture.",
+        "# dual-LLM boundary",
+        "This runtime separates reasoning from operations by architecture.",
         f"Mind model: {mind_provider + '/' if mind_provider else ''}{mind_model}.",
     ]
     if ops_model or ops_provider:
