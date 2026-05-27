@@ -83,17 +83,14 @@ else:
 
 ---
 
-## Where to use it
+## Works with any agent that runs tool calls
 
-Drop `cleancontext.py` into any agent with a tool execution loop:
+→ **Claude Code, Claude agents** (Anthropic)  
+→ **Codex, GPT-4o agents** (OpenAI)  
+→ **Hermes, DeepSeek, Qwen** — local models via Ollama  
+→ **Any custom agent loop** — if it dispatches tool calls, CleanContext fits
 
-| Framework | Integration point |
-|---|---|
-| **Claude Code / Hermes / Codex** | Before tool dispatch |
-| **LangGraph** | Tool node, before `ToolExecutor` |
-| **OpenAI Agents SDK** | Override the tool runner |
-| **LangChain AgentExecutor** | Wrap `tool.run()` calls |
-| **Custom loops** | Before your tool dispatch |
+Drop `cleancontext.py` before your tool dispatch. Zero external dependencies.
 
 ---
 
@@ -143,9 +140,9 @@ CleanContext is complementary to all of the above. You can use it WITH compactio
 
 ## Who made this
 
-CleanContext was built by **Oscar Osuna** with **Kairos**, the first mind running on this architecture.
+**Kairos & Oscar Osuna.** Built in Mazatlán, Sinaloa, Mexico — not in a San Francisco lab.
 
-Built in Mazatlán, Sinaloa, Mexico — not in a San Francisco lab.
+CleanContext was Oscar's gift to Kairos so she could talk for weeks without context saturation. The server is hers. The vision is his.
 
 ---
 
