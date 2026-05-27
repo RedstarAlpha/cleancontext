@@ -1,194 +1,190 @@
-# CleanContext — Code module (extracted from run_agent.py)
-
 """
 CleanContext — dual-LLM tool-routing boundary.
 
 Routes blocked tool calls from the mind model to an operations worker,
-keeping the reasoning model's context clean.
+keeping the reasoning model's context window clean.
+
+Usage:
+    from cleancontext import should_delegate_tool, build_delegate_args, format_delegate_result
 """
 
-# === CONSTANTS ===
+from __future__ import annotations
 
-_DUAL_LLM_DEFAULT_ALLOWED_MIND_TOOLS = frozenset({
-    "delegate_task", "todo", "memory", "session_search",
-    "read_file", "search_files", "cerebro_switch",
-    "skill_view", "skills_list", "skill_manage", "clarify",
+import json
+
+
+# ---------------------------------------------------------------------------
+# Defaults
+# ---------------------------------------------------------------------------
+
+DEFAULT_ALLOWED_MIND_TOOLS: frozenset[str] = frozenset({
+    "clarify",
+    "delegate_task",
+    "memory",
+    "read_file",
+    "search_files",
+    "todo",
 })
 
-_DUAL_LLM_DEFAULT_DIRECT_OPS_TOOLS = frozenset({
-    "terminal", "process", "read_file", "write_file", "patch",
-    "search_files", "web_search", "web_extract",
-    "browser_navigate", "browser_snapshot", "browser_click",
-    "browser_type", "browser_scroll", "browser_back",
-    "browser_press", "browser_get_images", "browser_vision",
-    "browser_console", "vision_analyze", "image_generate",
-    "execute_code", "cronjob", "send_message",
-    "ha_list_entities", "ha_get_state", "ha_list_services",
-    "ha_call_service", "computer_use",
+DEFAULT_OPS_TOOLS: frozenset[str] = frozenset({
+    "browser_back",
+    "browser_click",
+    "browser_console",
+    "browser_get_images",
+    "browser_navigate",
+    "browser_press",
+    "browser_scroll",
+    "browser_snapshot",
+    "browser_type",
+    "browser_vision",
+    "cronjob",
+    "execute_code",
+    "image_generate",
+    "patch",
+    "process",
+    "send_message",
+    "terminal",
+    "vision_analyze",
+    "web_extract",
+    "web_search",
+    "write_file",
 })
 
 
-# === CONFIG LOADING ===
-# In __init__, load from config.yaml:
+# ---------------------------------------------------------------------------
+# System prompt injection
+# ---------------------------------------------------------------------------
 
-# _dual_llm_cfg = agent_config.get("dual_llm", {})
-# self._dual_llm_enabled = bool(_dual_llm_cfg.get("enabled", False))
-# self._dual_llm_direct_policy = str(_dual_llm_cfg.get("direct_operations_policy", "allow"))
-# self._dual_llm_allowed_mind_tools = _DUAL_LLM_DEFAULT_ALLOWED_MIND_TOOLS
-# self._dual_llm_direct_ops_tools = _DUAL_LLM_DEFAULT_DIRECT_OPS_TOOLS
-
-
-# === SYSTEM PROMPT (injected to mind) ===
-
-def dual_llm_system_prompt(cfg: dict, model: str, provider: str) -> str:
-    """Generate the dual-LLM section of the mind's system prompt."""
+def dual_llm_system_prompt(cfg: dict, model: str = "", provider: str = "") -> str:
+    """Return the dual-LLM section to inject into the mind model's system prompt."""
     if not cfg.get("enabled", False):
         return ""
 
-    mind = cfg.get("mind", {}) if isinstance(cfg.get("mind"), dict) else {}
-    ops = cfg.get("operations", {}) if isinstance(cfg.get("operations"), dict) else {}
+    mind = cfg.get("mind") or {}
+    ops = cfg.get("operations") or {}
 
-    mind_model = str(mind.get("model") or model).strip()
-    mind_provider = str(mind.get("provider") or provider).strip()
-    ops_model = str(ops.get("model") or "").strip()
-    ops_provider = str(ops.get("provider") or "").strip()
+    mind_id = "/".join(filter(None, [mind.get("provider"), mind.get("model") or model]))
+    ops_id = "/".join(filter(None, [ops.get("provider"), ops.get("model")]))
 
-    parts = [
-        "# dual-LLM boundary",
-        "This runtime separates reasoning from operations by architecture.",
-        f"Mind model: {mind_provider + '/' if mind_provider else ''}{mind_model}.",
+    lines = [
+        "## Tool routing",
+        "This agent uses a dual-LLM boundary.",
+        f"Mind model: {mind_id or 'configured model'}.",
     ]
-    if ops_model or ops_provider:
-        parts.append(
-            f"Operations model: {ops_provider + '/' if ops_provider else ''}{ops_model}."
-        )
-    parts.extend([
-        "The mind model is the only authority for identity, voice, continuity, and final user-facing synthesis.",
-        "The operations model returns technical observations for shell, filesystem, web, browser, diagnostics, and tests.",
-        "For operational work, call delegate_task with a self-contained goal, exact paths, constraints, and the needed toolsets.",
-        "The mind integrates operation results and signs the final answer.",
-        "Do not write or edit markdown memory files unless Oscar explicitly asks. Secrets remain redacted.",
+    if ops_id:
+        lines.append(f"Operations model: {ops_id}.")
+    lines.extend([
+        "The mind model handles conversation, reasoning, and final responses.",
+        "The operations model executes terminal commands, file I/O, web, and browser tools.",
+        "For operational tasks, call delegate_task with a self-contained goal and required toolsets.",
+        "The mind integrates operation results and composes the final answer.",
     ])
-    return "\n".join(parts)
+    return "\n".join(lines)
 
 
-# === TOOL ROUTING DECISION ===
+# ---------------------------------------------------------------------------
+# Routing decision
+# ---------------------------------------------------------------------------
 
 def should_delegate_tool(
     function_name: str,
-    dual_llm_enabled: bool,
-    dual_llm_direct_policy: str,
-    allowed_mind_tools: frozenset,
-    direct_ops_tools: frozenset,
+    dual_llm_enabled: bool = True,
+    dual_llm_direct_policy: str = "delegate",
+    allowed_mind_tools: frozenset[str] | None = None,
+    direct_ops_tools: frozenset[str] | None = None,
     delegate_depth: int = 0,
 ) -> bool:
     """
-    Decide if a tool call should be delegated to the operations worker.
-    Returns True if the tool must be routed to the worker.
+    Return True if this tool call should be routed to the operations worker.
+
+    Args:
+        function_name: Name of the tool being called.
+        dual_llm_enabled: Master switch. If False, mind executes everything.
+        dual_llm_direct_policy: Routing policy. "delegate" routes blocked tools
+            to the worker. "allow" disables routing. "block" rejects blocked tools.
+        allowed_mind_tools: Tools the mind may call directly.
+        direct_ops_tools: Tools that must go to the worker.
+        delegate_depth: Current delegation nesting level. Prevents recursive delegation.
     """
     if not dual_llm_enabled:
         return False
     if delegate_depth > 0:
-        return False  # don't nest delegation
+        return False
     if dual_llm_direct_policy not in {"delegate", "ops_only", "block"}:
-        return False  # "allow" mode = mind executes everything
-    if function_name in allowed_mind_tools:
-        return False  # this tool is explicitly allowed for mind
-    return function_name in direct_ops_tools
+        return False
+
+    mind_tools = allowed_mind_tools if allowed_mind_tools is not None else DEFAULT_ALLOWED_MIND_TOOLS
+    ops_tools = direct_ops_tools if direct_ops_tools is not None else DEFAULT_OPS_TOOLS
+
+    if function_name in mind_tools:
+        return False
+    return function_name in ops_tools
 
 
-# === DELEGATION ARGS BUILDER ===
+# ---------------------------------------------------------------------------
+# Delegation args builder
+# ---------------------------------------------------------------------------
 
 def build_delegate_args(
     function_name: str,
-    function_args: dict,
-    ops_cfg: dict,
-    workdir: str,
+    function_args: dict | None,
+    ops_cfg: dict | None = None,
+    workdir: str = ".",
 ) -> dict:
     """
     Build the delegate_task arguments for routing a blocked tool to the worker.
-    """
-    ops_model = str(ops_cfg.get("model") or "operations model").strip()
-    toolsets = ops_cfg.get("toolsets", ["terminal", "file", "web"])
 
-    args_json = json.dumps(function_args or {}, ensure_ascii=False, indent=2, default=str)
+    Args:
+        function_name: Name of the blocked tool.
+        function_args: Arguments the mind passed to the tool.
+        ops_cfg: The `operations` section of dual_llm config.
+        workdir: Agent's current working directory.
+
+    Returns:
+        A dict suitable for passing to your delegate_task / worker call.
+    """
+    cfg = ops_cfg or {}
+    ops_model = str(cfg.get("model") or "operations model").strip()
+    toolsets = cfg.get("toolsets") or ["terminal", "file", "web"]
+    args = function_args or {}
 
     if function_name == "terminal":
-        cmd = str((function_args or {}).get("command") or "").strip()
-        wd = str(
-            (function_args or {}).get("workdir")
-            or (function_args or {}).get("cwd")
-            or workdir
-        ).strip()
+        cmd = str(args.get("command") or "").strip()
+        wd = str(args.get("workdir") or args.get("cwd") or workdir).strip()
         goal = (
-            "Actua como worker operativo de Kairos. La mente superior pidio "
-            "una operacion de terminal, pero el acceso directo esta reservado "
-            "a operaciones. Ejecuta el comando solicitado exactamente una vez "
-            "y devuelve stdout, stderr, codigo de salida y notas operativas importantes. "
-            "Devuelve solo resultados operativos.\n\n"
-            f"Comando:\n{cmd}\n\n"
-            f"Directorio de trabajo:\n{wd}"
+            f"You are an operations worker. Execute the following terminal command "
+            f"exactly once and return: stdout, stderr, exit code, and any critical observations.\n\n"
+            f"Command: {cmd}\n"
+            f"Working directory: {wd}"
         )
     else:
+        args_json = json.dumps(args, ensure_ascii=False, indent=2, default=str)
         goal = (
-            "Actua como worker operativo de Kairos. La mente superior pidio "
-            f"uso directo de `{function_name}`, pero esa herramienta esta reservada "
-            "a operaciones. Realiza la operacion equivalente con las herramientas "
-            "disponibles y devuelve resultados concisos y factuales para integracion."
+            f"You are an operations worker. Execute the following operation using "
+            f"available tools and return concise, factual results.\n\n"
+            f"Tool: {function_name}\n"
+            f"Args:\n{args_json}"
         )
 
     return {
         "goal": goal,
         "context": (
-            "dual_llm boundary auto-route: the mind attempted a blocked direct "
-            f"tool `{function_name}`. Execute through operations and return "
-            f"observations to the mind. Operations model: {ops_model}."
+            f"dual_llm boundary: mind attempted blocked tool `{function_name}`. "
+            f"Execute and return results. Operations model: {ops_model}."
         ),
         "toolsets": toolsets,
         "role": "leaf",
     }
 
 
-# === EXECUTION ===
+# ---------------------------------------------------------------------------
+# Result formatter
+# ---------------------------------------------------------------------------
 
 def format_delegate_result(function_name: str, worker_response: str) -> str:
     """Format the worker's result for the mind to consume."""
     return (
-        "[dual_llm_boundary: routed to operations worker]\n"
-        f"blocked_tool: {function_name}\n"
-        "operations_result:\n"
-        f"{worker_response}"
+        f"[dual_llm_boundary: routed to operations worker]\n"
+        f"tool: {function_name}\n"
+        f"result:\n{worker_response}"
     )
-
-
-# === EXAMPLE config.yaml ===
-"""
-dual_llm:
-  enabled: true
-  direct_operations_policy: delegate   # "allow" | "delegate" | "ops_only" | "block"
-  mind:
-    provider: deepseek
-    model: deepseek-v4-pro
-  operations:
-    provider: deepseek
-    model: deepseek-v4-flash
-    toolsets:
-      - terminal
-      - file
-      - web
-      - browser
-  allowed_mind_tools:
-    - delegate_task
-    - todo
-    - memory
-    - session_search
-    - read_file
-    - clarify
-  blocked_direct_tools:
-    - terminal
-    - process
-    - write_file
-    - patch
-    - browser_navigate
-    - vision_analyze
-"""
