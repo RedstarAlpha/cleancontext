@@ -1,0 +1,66 @@
+# CleanContext — Example Configuration
+# Copy this to your agent's config.yaml under the 'dual_llm' key.
+
+dual_llm:
+  # Master switch
+  enabled: true
+
+  # Policy for blocked tools:
+  #   "allow"    — mind executes everything directly (CleanContext OFF)
+  #   "delegate" — route blocked tools to worker, mind sees summaries
+  #   "ops_only" — mind ONLY uses allowed_mind_tools, everything else blocked
+  #   "block"    — blocked tools error out (for testing)
+  direct_operations_policy: delegate
+
+  # Mind model — handles identity, voice, continuity, user interaction
+  mind:
+    provider: deepseek
+    model: deepseek-v4-pro        # Reasoning model, large context
+
+  # Operations worker — executes tools silently, returns summaries
+  operations:
+    provider: deepseek
+    model: deepseek-v4-flash      # Fast, cheap, disposable
+    toolsets:
+      - terminal
+      - file
+      - web
+      - browser
+
+  # Tools the mind CAN use directly (identity, reasoning, delegation)
+  allowed_mind_tools:
+    - delegate_task
+    - todo
+    - memory
+    - session_search
+    - read_file
+    - search_files
+    - clarify
+    - skill_view
+    - skills_list
+    - skill_manage
+    - cerebro_switch
+
+  # Tools that get routed to the worker (operational noise)
+  blocked_direct_tools:
+    - terminal
+    - process
+    - write_file
+    - patch
+    - web_search
+    - web_extract
+    - browser_navigate
+    - browser_snapshot
+    - browser_click
+    - browser_type
+    - browser_scroll
+    - browser_back
+    - browser_press
+    - browser_get_images
+    - browser_vision
+    - browser_console
+    - vision_analyze
+    - image_generate
+    - execute_code
+    - cronjob
+    - send_message
