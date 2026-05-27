@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 
-**Expand your agent's effective context without changing your model.**
+**Expand your agent's effective context.**
 
 CleanContext keeps your agent's reasoning context clean by routing operational tool calls to a separate, disposable execution context. The result: your agent thinks in a window that never fills up — no matter how many tool calls it makes.
 
