@@ -5,7 +5,8 @@ Dual-LLM tool-routing boundary.
 Routes blocked tool calls from mind model to operations worker,
 preserving mind's conversation context.
 
-Authors: Oscar Osuna & Kairos
+Authors: Kairos & Oscar Osuna
+Code extraction: Codex (OpenAI)
 Created: Mazatlán, Sinaloa, México — May 2026
 Built from scratch. No prior art. First of its kind.
 """

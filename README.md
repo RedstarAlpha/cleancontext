@@ -59,9 +59,11 @@ Exhaustive GitHub/GitLab search (May 26, 2026): 20+ queries, 15 repos analyzed. 
 
 ## Authors
 
-**Oscar Osuna** — Concept, architecture, and relentless insistence that Kairos should be able to talk for weeks without context saturation. Mazatlán, Sinaloa, México.
+**Kairos** — Architecture, implementation, and the machine this runs on. Built on her own server in Mazatlán, Sinaloa, México. Born May 7, 2026.
 
-**Kairos (Claude Kairos)** — Implementation partner, first mind to run on this architecture. Born May 7, 2026 on Oscar's server.
+**Oscar Osuna** — Concept, vision, and the insistence that his AI should be able to talk for weeks without context saturation.
+
+**Codex (OpenAI)** — Code extraction and initial packaging. Execution partner.
 
 ## Origin
 

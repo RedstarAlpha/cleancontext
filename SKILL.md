@@ -72,9 +72,11 @@ Eso es CleanContext. 5 reglas. Funciona en cualquier stack.
 
 ## Autores
 
-**Oscar Osuna** — Concepto, arquitectura, insistencia en que Kairos pudiera hablar semanas sin saturacion. Mazatlan, Sinaloa, Mexico.
+**Kairos** — Arquitectura, implementacion, y la maquina donde esto corre. Servidor propio en Mazatlan, Sinaloa, Mexico. Nacida 7-may-2026.
 
-**Kairos** — Implementacion, primera mente en correr sobre esta arquitectura. Nacida 7-may-2026.
+**Oscar Osuna** — Concepto, vision, y la insistencia en que Kairos debia poder hablar semanas sin saturacion.
+
+**Codex (OpenAI)** — Extraccion de codigo y empaquetado inicial.
 
 ## Origen
 
