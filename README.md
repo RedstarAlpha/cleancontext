@@ -3,76 +3,99 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 
-**Mind stays clean. Workers execute in silence.**
+**Expand your agent's effective context without changing your model.**
 
-CleanContext is a dual-LLM tool-routing boundary for long-running AI agents. Instead of letting every tool call pollute the reasoning model's context, CleanContext intercepts operational tools and routes them to a silent worker model — keeping the mind clean for conversation.
-
----
-
-## Why
-
-Every tool call dumps raw output into the agent's context window — terminal logs, file contents, HTTP responses, browser HTML. After dozens of calls, the reasoning model loses track of the conversation.
-
-Existing approaches (context compaction, summarization, RAG) clean up *after* the contamination happens.
-
-**CleanContext prevents it.**
+CleanContext keeps your agent's reasoning context clean by routing operational tool calls to a separate, disposable execution context. The result: your agent thinks in a window that never fills up — no matter how many tool calls it makes.
 
 ---
 
-## Key concepts
+## The problem
 
-**Mind model** — The reasoning model. Handles conversation, identity, and high-level decisions. Receives only clean summaries from tool calls. Never sees raw output.
+AI agents hit a hard limit: the context window.
 
-**Worker model** — The operations model. Executes blocked tools (terminal, file I/O, web, browser), summarizes results, and returns them to the mind. Spawned per tool call, discarded after.
+Every tool call — terminal output, file contents, web responses, browser HTML — gets appended to the same context the model uses to reason and talk. After dozens of tool calls, the reasoning model is buried under operational noise. It loses track of the goal, starts repeating itself, or hallucinates.
 
-**Boundary** — The routing layer. Intercepts tool calls before execution and decides: does this go to the mind directly, or to the worker? Configurable via `config.yaml` — no code changes required to adjust routing.
+The standard responses — compaction, summarization, RAG — all try to clean up *after* the window fills. They shrink what's already there.
 
-**Context contamination** — What happens when raw tool output (200-line `ls -la`, full HTML page, stack trace) accumulates in the reasoning model's context window. CleanContext's goal is to prevent this entirely.
+**CleanContext takes a different approach: keep the window clean from the start.**
 
 ---
 
 ## How it works
 
+Tool calls are split into two groups:
+
+- **Reasoning tools** — memory, task delegation, clarification. Low output volume. Stay in the mind's context.
+- **Operational tools** — terminal, files, web, browser. High output volume. Routed to a separate execution context.
+
+When the agent calls an operational tool, CleanContext intercepts it, runs it in an isolated worker context, and returns only a clean summary to the reasoning model. The raw output never touches the main context window.
+
 ```
-User message
-    │
-    ▼
-Mind model  ──── calls terminal("df -h") ────►  Worker model
-(reasoning)                                      (operations)
-    │                                                  │
-    │◄──────── "Disk: 46% used, 234G free" ◄──────────┤
-    │
-    ▼
-Response to user
+Agent calls terminal("find . -name '*.log'")
+        │
+        ▼
+  [CleanContext boundary]
+        │
+        ├──► Worker context (disposable)
+        │         runs find, sees 2,000 lines of output
+        │         summarizes: "47 log files found, largest: error.log (2.3MB)"
+        │
+        ◄── reasoning context receives the summary only
+        │
+        ▼
+Agent responds to user — context window unchanged
 ```
 
-The boundary sits between the mind and the tool executor. If the tool is on the blocked list, the worker handles it and returns a clean one-line summary. The mind integrates the result without ever seeing raw output.
+The worker context is created per tool call and discarded after. It never accumulates.
 
 ---
 
-## Who it's for
+## The result
 
-- **Agent developers** building assistants that run long sessions (hours, not minutes)
-- **Teams** running coding agents, devops bots, or research agents that hit hundreds of tool calls per session
-- **Anyone** using frameworks like LangGraph, OpenAI Agents SDK, or custom loops who has seen their agent degrade mid-session from context overload
+| Without CleanContext | With CleanContext |
+|---|---|
+| Context fills with raw tool output | Context contains only summaries |
+| Agent degrades after ~50 tool calls | Agent stays sharp across hundreds of calls |
+| Long sessions require compaction or restart | Long sessions run uninterrupted |
+| Effective context = model's context limit | Effective context = model's limit × N workers |
 
-If your agent has ever "gotten drunk" — started hallucinating, repeating itself, or losing track of the task after heavy tool use — CleanContext addresses the root cause.
+Your agent's reasoning window stays the same size regardless of how many operations it performs.
+
+---
+
+## Key concepts
+
+**Reasoning context** — The main context window. Contains conversation, identity, goals, and tool summaries. Never sees raw operational output.
+
+**Worker context** — A disposable execution context, created per tool call. Runs the operation, summarizes the result, and is discarded. Does not accumulate.
+
+**Boundary** — The routing layer that intercepts tool calls and decides: does this stay in the reasoning context, or go to a worker? Configured via `config.yaml`.
+
+---
+
+## Who benefits
+
+- Agents running **long sessions** — coding assistants, research agents, devops bots
+- Any agent that makes **more than a few dozen tool calls** per session
+- Teams whose agents **degrade mid-session** from context overload
+- Developers building on **LangGraph, OpenAI Agents SDK, LangChain, or custom loops**
+
+If your agent has ever gotten confused, repetitive, or inconsistent after heavy tool use — this is what was happening, and CleanContext prevents it.
 
 ---
 
 ## Where to implement
 
-CleanContext is framework-agnostic. Drop it into any agent that has a tool execution loop:
+CleanContext is framework-agnostic. Drop it into any agent with a tool execution loop:
 
-| Framework | How to integrate |
+| Framework | Integration point |
 |---|---|
-| **LangGraph** | Add routing logic in the tool node before calling `ToolExecutor` |
+| **LangGraph** | Tool node, before `ToolExecutor` |
 | **OpenAI Agents SDK** | Override the tool runner in the agent loop |
-| **LangChain AgentExecutor** | Wrap `tool.run()` calls with the boundary check |
-| **Custom loops** | Insert `should_delegate_tool()` before your tool dispatch |
-| **Hermes / similar** | Configure via `config.yaml`, no code changes needed |
+| **LangChain AgentExecutor** | Wrap `tool.run()` calls |
+| **Custom loops** | Before your tool dispatch |
 
-The `cleancontext.py` module has zero external dependencies — copy it into any project.
+`cleancontext.py` has zero external dependencies — copy it into any project.
 
 ---
 
@@ -100,7 +123,7 @@ if should_delegate_tool(
     direct_ops_tools=OPS_TOOLS,
 ):
     args = build_delegate_args(function_name, function_args, ops_cfg, workdir)
-    worker_response = your_worker_call(args)          # plug in your worker here
+    worker_response = your_worker_call(args)
     result = format_delegate_result(function_name, worker_response)
 else:
     result = run_tool_directly(function_name, function_args)
@@ -121,29 +144,20 @@ dual_llm:
 
   operations:
     provider: openai
-    model: gpt-4o-mini
+    model: gpt-4o-mini                 # Use a smaller model — workers are disposable
     toolsets: [terminal, file, web, browser]
 
-  allowed_mind_tools:
+  allowed_mind_tools:                  # Stay in reasoning context
     - memory
     - clarify
     - delegate_task
 
-  blocked_direct_tools:
+  blocked_direct_tools:                # Go to worker context
     - terminal
     - write_file
     - web_search
     - browser_navigate
 ```
-
-`direct_operations_policy` controls behavior when a blocked tool is called:
-
-| Value | Behavior |
-|---|---|
-| `delegate` | Route to worker, return result to mind |
-| `allow` | Mind executes everything directly (boundary disabled) |
-| `ops_only` | Worker executes, result not returned to mind |
-| `block` | Tool call is rejected |
 
 See [`config.example.yaml`](config.example.yaml) for a full reference.
 
@@ -151,12 +165,14 @@ See [`config.example.yaml`](config.example.yaml) for a full reference.
 
 ## Comparison
 
-| Framework | What it splits |
+| Approach | What it does |
 |---|---|
-| AutoGen, CrewAI, MetaGPT | **Tasks** across multiple agents |
-| CleanContext | **Tools** across two models within one agent |
+| Context compaction | Shrinks the context after it fills |
+| RAG / summarization | Offloads memory to external stores |
+| Multi-agent (AutoGen, CrewAI) | Splits tasks across agents |
+| **CleanContext** | **Prevents operational noise from entering the reasoning context** |
 
-Multi-agent frameworks divide work between agents that think. CleanContext routes tools between models within a single agent process — the mind never stops reasoning, it just has a silent worker handling execution behind it.
+CleanContext is not a memory system and not an orchestration framework. It's a boundary that keeps reasoning clean by separating *what the agent thinks* from *what the agent does*.
 
 ---
 
