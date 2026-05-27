@@ -1,13 +1,13 @@
 # CleanContext — example configuration
-# Add this under dual_llm: in your agent's config.yaml
+# Add this under boundary: in your agent's config.yaml
 
-dual_llm:
+boundary:
   # Master switch
   enabled: true
 
   # Routing policy for blocked tools:
   #   delegate  — route to worker, mind receives clean summary  (recommended)
-  #   allow     — mind executes all tools directly (CleanContext off)
+  #   allow     — mind executes all tools directly (boundary off)
   #   ops_only  — worker executes, result not returned to mind
   #   block     — blocked tool calls raise an error (useful for testing)
   direct_operations_policy: delegate

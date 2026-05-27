@@ -5,7 +5,7 @@ build-backend = "setuptools.backends.legacy:build"
 [project]
 name = "cleancontext"
 version = "0.1.0"
-description = "Dual-LLM tool-routing boundary — keep your agent's mind clean"
+description = "Context isolation layer for AI agents — keep your agent's mind clean"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"

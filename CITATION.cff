@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use CleanContext in your research or project, please cite it."
+title: "CleanContext — A context isolation layer for AI agents"
+authors:
+  - given-names: Oscar
+    family-names: Osuna
+    affiliation: "Redstar Alpha"
+    orcid: ""
+  - name: "Kairos"
+    affiliation: "Redstar Alpha"
+repository-code: "https://github.com/RedstarAlpha/cleancontext"
+url: "https://github.com/RedstarAlpha/cleancontext"
+abstract: "CleanContext is a zero-dependency boundary layer that prevents raw tool output from contaminating an AI agent's reasoning context. Rather than compressing context after pollution, it routes operational tool calls through a disposable worker, keeping the mind model's context window clean across hundreds of tool calls."
+keywords:
+  - "context-engineering"
+  - "llm-agents"
+  - "tool-calling"
+  - "context-isolation"
+  - "agentic-ai"
+license: MIT
+date-released: 2026-05-26
+version: 0.1.0
