@@ -136,9 +136,9 @@ CleanContext is complementary to all of the above. Use it with compaction, RAG, 
 
 ---
 
-## Who made this
+## Author
 
-**Oscar Osuna.** Built in Mazatlán, Sinaloa, Mexico — not in a San Francisco lab.
+[Oscar Osuna](https://github.com/RedstarAlpha)
 
 ---
 
