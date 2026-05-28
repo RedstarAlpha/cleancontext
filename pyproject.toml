@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=61"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "cleancontext"
@@ -9,7 +9,7 @@ description = "Context isolation layer for AI agents — keep your agent's mind 
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
-keywords = ["llm", "agent", "context-window", "tool-routing", "ai"]
+keywords = ["llm", "ai-agents", "context-window", "tool-routing", "dual-llm", "context-isolation", "context-engineering"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

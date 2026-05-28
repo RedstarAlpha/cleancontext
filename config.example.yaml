@@ -13,12 +13,22 @@ boundary:
   direct_operations_policy: delegate
 
   # Mind model — reasoning, conversation, final responses
+  # Examples:
+  #   OpenAI:     provider: openai      model: gpt-4o
+  #   Anthropic:  provider: anthropic   model: claude-sonnet-4-6
+  #   Ollama:     provider: ollama      model: hermes3:8b
+  #   DeepSeek:   provider: deepseek    model: deepseek-chat
   mind:
     provider: openai
     model: gpt-4o
 
   # Operations worker — executes tools silently, returns summaries
   # Use a smaller/faster model here to keep costs down
+  # Examples:
+  #   OpenAI:     provider: openai      model: gpt-4o-mini
+  #   Anthropic:  provider: anthropic   model: claude-haiku-4-5-20251001
+  #   Ollama:     provider: ollama      model: qwen2.5:3b
+  #   DeepSeek:   provider: deepseek    model: deepseek-chat
   operations:
     provider: openai
     model: gpt-4o-mini
