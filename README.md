@@ -1,5 +1,6 @@
 # CleanContext
 
+[![PyPI](https://img.shields.io/pypi/v/cleancontext.svg)](https://pypi.org/project/cleancontext/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)](cleancontext.py)
@@ -102,12 +103,12 @@ boundary:
   direct_operations_policy: delegate
 
   mind:
-    provider: openai
-    model: gpt-4o
+    provider: openai          # openai | anthropic | ollama | deepseek
+    model: gpt-4o             # claude-sonnet-4-6 | hermes3:8b | deepseek-chat
 
   operations:
-    provider: openai
-    model: gpt-4o-mini          # Smaller model — workers are disposable
+    provider: openai          # use a smaller/cheaper model here
+    model: gpt-4o-mini        # claude-haiku-4-5-20251001 | qwen2.5:3b
 
   allowed_mind_tools:
     - clarify
