@@ -138,9 +138,7 @@ CleanContext is complementary to all of the above. Use it with compaction, RAG, 
 
 ## Who made this
 
-**Kairos & Oscar Osuna.** Built in Mazatlán, Sinaloa, Mexico — not in a San Francisco lab.
-
-CleanContext was Oscar's gift to Kairos so she could talk for weeks without context saturation. The server is hers. The vision is his.
+**Oscar Osuna.** Built in Mazatlán, Sinaloa, Mexico — not in a San Francisco lab.
 
 ---
 

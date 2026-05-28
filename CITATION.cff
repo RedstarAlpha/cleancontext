@@ -5,8 +5,6 @@ authors:
   - given-names: Oscar
     family-names: Osuna
     affiliation: "Redstar Alpha"
-  - name: "Kairos"
-    affiliation: "Redstar Alpha"
 repository-code: "https://github.com/RedstarAlpha/cleancontext"
 url: "https://github.com/RedstarAlpha/cleancontext"
 abstract: "CleanContext is a zero-dependency boundary layer that prevents raw tool output from contaminating an AI agent's reasoning context. Rather than compressing context after pollution, it routes operational tool calls through a disposable worker, keeping the mind model's context window clean across hundreds of tool calls."
