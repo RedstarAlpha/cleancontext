@@ -1,8 +1,9 @@
 """
-CleanContext — context isolation boundary layer.
+CleanContext — keep your AI agent sharp through long sessions.
 
-Routes blocked tool calls from the mind model to an operations worker,
-keeping the reasoning model's context window clean.
+Prevents context rot by routing high-noise tool calls (terminal, files, web)
+to a disposable worker. The agent's reasoning context only receives clean summaries,
+not raw output — no hallucinations, no repetition, no degradation.
 
 Usage:
     from cleancontext import should_delegate_tool, build_delegate_args, format_delegate_result
