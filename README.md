@@ -5,11 +5,11 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)](cleancontext.py)
 
-**A context isolation layer for AI agents.**
+**Keep your AI agent sharp through long sessions — no hallucinations, no repetition, no context rot.**
 
-Most agents degrade because raw tool output — terminal logs, file contents, web responses — floods the reasoning context. Standard solutions compress context *after* it gets polluted.
+Most agents start degrading after 50–100 tool calls. Terminal output, file contents, web responses — all of it piles into the same context the agent uses to think. Eventually it loses track, repeats itself, or hallucinates.
 
-CleanContext prevents operational noise from entering in the first place.
+CleanContext stops that from happening.
 
 ```
 Without CleanContext              With CleanContext
@@ -29,15 +29,14 @@ Agent calls terminal("find .")   Agent calls terminal("find .")
 
 ---
 
-## What it is
+## How it works
 
-A boundary layer between **reasoning** and **execution**.
+Tool calls are split into two categories:
 
-- The mind model talks to the user, makes decisions, holds identity
-- The worker model executes tools silently, returns clean summaries
-- Raw tool output never touches the reasoning context
+- **Reasoning tools** — memory, delegation, clarification. Low noise. Stay in the main context.
+- **Operational tools** — terminal, files, web, browser. High noise. Routed to a worker that executes silently and returns only a clean summary.
 
-This is **not** a multi-LLM orchestrator, not an agent framework, not a memory system. It's a single Python file that routes tool calls through a clean/dirty boundary.
+The agent's reasoning context never sees raw tool output. It only sees results.
 
 ---
 
@@ -58,7 +57,7 @@ This is **not** a multi-LLM orchestrator, not an agent framework, not a memory s
 pip install cleancontext
 ```
 
-Or copy `cleancontext.py` into your project. Zero dependencies.
+Or copy `cleancontext.py` into your project. Zero external dependencies.
 
 ---
 
@@ -84,14 +83,12 @@ else:
 
 ---
 
-## Works with any agent that runs tool calls
+## Works with any agent
 
 → **Claude Code, Claude agents** (Anthropic)  
 → **Codex, GPT-4o agents** (OpenAI)  
 → **Hermes, DeepSeek, Qwen** — local models via Ollama  
 → **Any custom agent loop** — if it dispatches tool calls, CleanContext fits
-
-Drop `cleancontext.py` before your tool dispatch. Zero external dependencies.
 
 ---
 
@@ -135,7 +132,7 @@ See [`config.example.yaml`](config.example.yaml) for a full reference.
 | Multi-agent (CrewAI, AutoGen) | Split tasks across agents |
 | **CleanContext** | **Block noise at the boundary before it enters** |
 
-CleanContext is complementary to all of the above. You can use it WITH compaction, WITH RAG, WITH multi-agent setups.
+CleanContext is complementary to all of the above. Use it with compaction, RAG, or multi-agent setups.
 
 ---
 
